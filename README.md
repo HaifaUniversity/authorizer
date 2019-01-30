@@ -17,6 +17,57 @@
 * **View Access**: Everyone (open access); Only logged in users
 * **Limit Login Attempts**: Progressively increase the amount of time required between invalid login attempts.
 
+## LDAP Role mapping
+
+If you're willing to use filter hooks, there should be a way to do this now. I still plan on building out a UI for defining group mappings in the Dashboard settings page, but in the meantime:
+
+There is a filter called "authorizer_custom_role" that lets you inspect attributes returned from CAS or LDAP when a user logs in, and change the user's role to anything you'd like. Here's an example of its use:
+
+```
+/**
+ * Filter the default role of the currently logging in user based on any of
+ * their user attributes.
+ *
+ * @param string $default_role Default role of the currently logging in user.
+ * @param array $user_data     User data returned from external service.
+ */
+function my_authorizer_custom_role( $default_role, $user_data ) {
+  // Allow library guests to log in via CAS, but only grant them 'subscriber' role.
+  if (
+    isset( $user_data['cas_attributes']['eduPersonPrimaryAffiliation'] ) &&
+    'library-walk-in' === $user_data['cas_attributes']['eduPersonPrimaryAffiliation']
+  ) {
+    $default_role = 'subscriber';
+  }
+  return $default_role;
+}
+add_filter( 'authorizer_custom_role', 'my_authorizer_custom_role', 10, 2 );
+```
+If you also want to automatically approve users based on data from CAS or LDAP (useful if you have the "Who can log into this site?" option set to "Only approved users"), skipping the "Pending User" step, I'm implementing a new filter called "authorizer_automatically_approve_login" that is similar. Here's an example of its use:
+
+```
+/**
+ * Filter whether to automatically approve the currently logging in user
+ * based on any of their user attributes.
+ *
+ * @param bool  $automatically_approve_login
+ *   Whether to automatically approve the currently logging in user.
+ * @param array $user_data User data returned from external service.
+ */
+function approve_all_faculty_logins( $automatically_approve_login, $user_data ) {
+  // Automatically approve logins for all faculty members.
+  if (
+    isset( $user_data['cas_attributes']['eduPersonAffiliation'] ) &&
+    'faculty' === $user_data['cas_attributes']['eduPersonAffiliation']
+  ) {
+    $automatically_approve_login = true;
+  }
+  return $automatically_approve_login;
+}
+add_filter( 'authorizer_automatically_approve_login', 'approve_all_faculty_logins', 10, 2 );
+Version 2.6.8 should have that last filter, and it is due out in a day or two.
+```
+
 ## Screenshots
 
 ![](assets/screenshot-1.png?raw=true "WordPress Login screen with Google Logins and CAS Logins enabled.")
