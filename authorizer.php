@@ -1536,6 +1536,9 @@ if ( ! class_exists( 'WP_Plugin_Authorizer' ) ) {
       if ( array_key_exists( 'ldap_attr_last_name', $auth_settings ) && strlen( $auth_settings['ldap_attr_last_name'] ) > 0 ) {
         array_push( $ldap_attributes_to_retrieve, $auth_settings['ldap_attr_last_name'] );
       }
+      if ( array_key_exists( 'ldap_attr_primary_code', $auth_settings ) && strlen( $auth_settings['ldap_attr_primary_code'] ) > 0 ) {
+        array_push( $ldap_attributes_to_retrieve, $auth_settings['ldap_attr_primary_code'] );
+      }
       if ( array_key_exists( 'ldap_attr_email', $auth_settings ) && strlen( $auth_settings['ldap_attr_email'] ) > 0 && substr( $auth_settings['ldap_attr_email'], 0, 1 ) !== '@' ) {
         array_push( $ldap_attributes_to_retrieve, $this->lowercase( $auth_settings['ldap_attr_email'] ) );
       }
@@ -1586,6 +1589,11 @@ if ( ! class_exists( 'WP_Plugin_Authorizer' ) ) {
         $ldap_attr_last_name = array_key_exists( 'ldap_attr_last_name', $auth_settings ) ? $this->lowercase( $auth_settings['ldap_attr_last_name'] ) : '';
         if ( strlen( $ldap_attr_last_name ) > 0 && array_key_exists( $ldap_attr_last_name, $ldap_entries[ $i ] ) && $ldap_entries[ $i ][ $ldap_attr_last_name ]['count'] > 0 && strlen( $ldap_entries[ $i ][ $ldap_attr_last_name ][0] ) > 0 ) {
           $last_name = $ldap_entries[ $i ][ $ldap_attr_last_name ][0];
+        }
+        // Get user plHUprimaryTypeCode
+        $ldap_attr_primary_code = array_key_exists( 'ldap_attr_primary_code', $auth_settings ) ? $this->lowercase( $auth_settings['ldap_attr_primary_code'] ) : '';
+        if ( strlen( $ldap_attr_primary_code ) > 0 && array_key_exists( $ldap_attr_primary_code, $ldap_entries[ $i ] ) && $ldap_entries[ $i ][ $ldap_attr_primary_code ]['count'] > 0 && strlen( $ldap_entries[ $i ][ $ldap_attr_primary_code ][0] ) > 0 ) {
+          $first_name = $ldap_entries[ $i ][ $ldap_attr_primary_code ][0];
         }
         // Get user email if it is specified in another field.
         $ldap_attr_email = array_key_exists( 'ldap_attr_email', $auth_settings ) ? $this->lowercase( $auth_settings['ldap_attr_email'] ) : '';
@@ -2876,6 +2884,13 @@ function signInCallback( authResult ) { // jshint ignore:line
         'auth_settings_external'
       );
       add_settings_field(
+        'auth_settings_ldap_attr_primary_code',
+        __( 'LDAP attribute containing primary code', 'authorizer' ),
+        array( $this, 'print_text_ldap_attr_primary_code' ),
+        'authorizer',
+        'auth_settings_external'
+      );
+      add_settings_field(
         'auth_settings_ldap_attr_update_on_login',
         __( 'LDAP attribute update', 'authorizer' ),
         array( $this, 'print_checkbox_ldap_attr_update_on_login' ),
@@ -3139,6 +3154,9 @@ function signInCallback( authResult ) { // jshint ignore:line
       if ( ! array_key_exists( 'ldap_attr_last_name', $auth_settings ) ) {
         $auth_settings['ldap_attr_last_name'] = '';
       }
+      if ( ! array_key_exists( 'ldap_attr_primary_code', $auth_settings ) ) {
+        $auth_settings['ldap_attr_primary_code'] = '';
+      }
       if ( ! array_key_exists( 'ldap_attr_update_on_login', $auth_settings ) ) {
         $auth_settings['ldap_attr_update_on_login'] = '';
       }
@@ -3302,6 +3320,9 @@ function signInCallback( authResult ) { // jshint ignore:line
         }
         if ( ! array_key_exists( 'ldap_attr_last_name', $auth_multisite_settings ) ) {
           $auth_multisite_settings['ldap_attr_last_name'] = '';
+        }
+        if ( ! array_key_exists( 'ldap_attr_primary_code', $auth_multisite_settings ) ) {
+          $auth_multisite_settings['ldap_attr_primary_code'] = '';
         }
         if ( ! array_key_exists( 'ldap_attr_update_on_login', $auth_multisite_settings ) ) {
           $auth_multisite_settings['ldap_attr_update_on_login'] = '';
@@ -5136,6 +5157,24 @@ function signInCallback( authResult ) { // jshint ignore:line
       <?php
     }
 
+    /**
+     * Settings print callback.
+     *
+     * @param  string $args Args (e.g., multisite admin mode).
+     * @return void
+     */
+    public function print_text_ldap_attr_primary_code( $args = '' ) {
+      // Get plugin option.
+      $option               = 'ldap_attr_primary_code';
+      $auth_settings_option = $this->get_plugin_option( $option, $this->get_admin_mode( $args ), 'allow override', 'print overlay' );
+
+      // Print option elements.
+      ?>
+      <input type="text" id="auth_settings_<?php echo esc_attr( $option ); ?>" name="auth_settings[<?php echo esc_attr( $option ); ?>]" value="<?php echo esc_attr( $auth_settings_option ); ?>" placeholder="" />
+      <br /><label for="auth_settings_<?php echo esc_attr( $option ); ?>" class="helper"><?php esc_html_e( 'Example:  plHUprimaryTypeCode', 'authorizer' ); ?></label>
+      <?php
+    }
+
 
     /**
      * Settings print callback.
@@ -5797,6 +5836,10 @@ function signInCallback( authResult ) { // jshint ignore:line
                 <td><?php $this->print_text_ldap_attr_last_name( array( WP_Plugin_Authorizer::NETWORK_CONTEXT => true ) ); ?></td>
               </tr>
               <tr>
+                <th scope="row"><?php esc_html_e( 'LDAP attribute containing primary code', 'authorizer' ); ?></th>
+                <td><?php $this->print_text_ldap_attr_primary_code( array( WP_Plugin_Authorizer::NETWORK_CONTEXT => true ) ); ?></td>
+              </tr>
+              <tr>
                 <th scope="row"><?php esc_html_e( 'LDAP attribute update', 'authorizer' ); ?></th>
                 <td><?php $this->print_checkbox_ldap_attr_update_on_login( array( WP_Plugin_Authorizer::NETWORK_CONTEXT => true ) ); ?></td>
               </tr>
@@ -5904,6 +5947,7 @@ function signInCallback( authResult ) { // jshint ignore:line
         'ldap_lostpassword_url',
         'ldap_attr_first_name',
         'ldap_attr_last_name',
+        'ldap_attr_primary_code',
         'ldap_attr_update_on_login',
         'advanced_lockouts',
         'advanced_hide_wp_login',
@@ -6817,6 +6861,7 @@ function signInCallback( authResult ) { // jshint ignore:line
           $auth_settings['ldap_lostpassword_url']     = $auth_multisite_settings['ldap_lostpassword_url'];
           $auth_settings['ldap_attr_first_name']      = $auth_multisite_settings['ldap_attr_first_name'];
           $auth_settings['ldap_attr_last_name']       = $auth_multisite_settings['ldap_attr_last_name'];
+          $auth_settings['ldap_attr_primary_code']       = $auth_multisite_settings['ldap_attr_primary_code'];
           $auth_settings['ldap_attr_update_on_login'] = $auth_multisite_settings['ldap_attr_update_on_login'];
 
           // Override access_who_can_login and access_who_can_view.
