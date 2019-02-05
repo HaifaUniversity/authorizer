@@ -696,24 +696,24 @@ if ( ! class_exists( 'WP_Plugin_Authorizer' ) ) {
        */
       function my_authorizer_custom_role( $default_role, $user_data ) {
         // Allow library guests to log in via LDAP, and grant them mapped role.
+        error_log( print_r( $user_data['primary_code'], true ) );
         if (
-          isset( $user_data['ldap_attributes']['plHUprimaryTypeCode'] ) &&
-          '2' == $user_data['ldap_attributes']['plHUprimaryTypeCode']
+          isset( $user_data['primary_code'] )
         ) {
           $default_role = 'management_staff';
         } else if (
-          isset( $user_data['ldap_attributes']['plHUprimaryTypeCode'] ) &&
-          '1' == $user_data['ldap_attributes']['plHUprimaryTypeCode']
+          isset( $user_data['ldap_attributes']['ldap_attr_primary_code'] ) &&
+          '1' == $user_data['ldap_attributes']['ldap_attr_primary_code']
         ) {
           $default_role = 'academic_staff';
         } else if (
-          isset( $user_data['ldap_attributes']['plHUprimaryTypeCode'] ) &&
-          '4' == $user_data['ldap_attributes']['plHUprimaryTypeCode']
+          isset( $user_data['ldap_attributes']['ldap_attr_primary_code'] ) &&
+          '4' == $user_data['ldap_attributes']['ldap_attr_primary_code']
         ) {
           $default_role = 'emeritus_staff';
         } else if (
-          isset( $user_data['ldap_attributes']['plHUprimaryTypeCode'] ) &&
-          '3' == $user_data['ldap_attributes']['plHUprimaryTypeCode']
+          isset( $user_data['ldap_attributes']['ldap_attr_primary_code'] ) &&
+          '3' == $user_data['ldap_attributes']['ldap_attr_primary_code']
         ) {
           $default_role = 'management_staff';
         } else {
@@ -1481,6 +1481,7 @@ if ( ! class_exists( 'WP_Plugin_Authorizer' ) ) {
       $first_name   = '';
       $last_name    = '';
       $email        = '';
+      $primary_code = '';
 
       // Construct LDAP connection parameters. ldap_connect() takes either a
       // hostname or a full LDAP URI as its first parameter (works with OpenLDAP
@@ -1520,7 +1521,7 @@ if ( ! class_exists( 'WP_Plugin_Authorizer' ) ) {
         $bind_password = $this->decrypt( $auth_settings['ldap_password'] );
       }
 
-      // Attempt LDAP bind.
+      // Attempt LDAP bind
       $result = @ldap_bind( $ldap, $bind_rdn, stripslashes( $bind_password ) ); // phpcs:ignore
       if ( ! $result ) {
         // Can't connect to LDAP, so fall back to WordPress authentication.
@@ -1593,7 +1594,8 @@ if ( ! class_exists( 'WP_Plugin_Authorizer' ) ) {
         // Get user plHUprimaryTypeCode
         $ldap_attr_primary_code = array_key_exists( 'ldap_attr_primary_code', $auth_settings ) ? $this->lowercase( $auth_settings['ldap_attr_primary_code'] ) : '';
         if ( strlen( $ldap_attr_primary_code ) > 0 && array_key_exists( $ldap_attr_primary_code, $ldap_entries[ $i ] ) && $ldap_entries[ $i ][ $ldap_attr_primary_code ]['count'] > 0 && strlen( $ldap_entries[ $i ][ $ldap_attr_primary_code ][0] ) > 0 ) {
-          $first_name = $ldap_entries[ $i ][ $ldap_attr_primary_code ][0];
+          $primary_code = $ldap_entries[ $i ][ $ldap_attr_primary_code ][0];
+          error_log(print_r($primary_code));
         }
         // Get user email if it is specified in another field.
         $ldap_attr_email = array_key_exists( 'ldap_attr_email', $auth_settings ) ? $this->lowercase( $auth_settings['ldap_attr_email'] ) : '';
@@ -1632,8 +1634,9 @@ if ( ! class_exists( 'WP_Plugin_Authorizer' ) ) {
         'username'         => $username,
         'first_name'       => $first_name,
         'last_name'        => $last_name,
+        'primary_code'     => $primary_code,
         'authenticated_by' => 'ldap',
-        'ldap_attributes'  => $ldap_entries,
+        'ldap_attributes'  => $ldap_entries
       );
     }
 
@@ -6861,7 +6864,7 @@ function signInCallback( authResult ) { // jshint ignore:line
           $auth_settings['ldap_lostpassword_url']     = $auth_multisite_settings['ldap_lostpassword_url'];
           $auth_settings['ldap_attr_first_name']      = $auth_multisite_settings['ldap_attr_first_name'];
           $auth_settings['ldap_attr_last_name']       = $auth_multisite_settings['ldap_attr_last_name'];
-          $auth_settings['ldap_attr_primary_code']       = $auth_multisite_settings['ldap_attr_primary_code'];
+          $auth_settings['ldap_attr_primary_code']    = $auth_multisite_settings['ldap_attr_primary_code'];
           $auth_settings['ldap_attr_update_on_login'] = $auth_multisite_settings['ldap_attr_update_on_login'];
 
           // Override access_who_can_login and access_who_can_view.
