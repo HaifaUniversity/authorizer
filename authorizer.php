@@ -696,9 +696,10 @@ if ( ! class_exists( 'WP_Plugin_Authorizer' ) ) {
        */
       function my_authorizer_custom_role( $default_role, $user_data ) {
         // Allow library guests to log in via LDAP, and grant them mapped role.
-        error_log( print_r( $user_data['primary_code'], true ) );
+        error_log( print_r( $user_data, true ) );
         if (
-          isset( $user_data['primary_code'] )
+          isset( $user_data['ldap_attributes']['ldap_attr_primary_code'] ) &&
+          '2' == $user_data['ldap_attributes']['ldap_attr_primary_code']
         ) {
           $default_role = 'management_staff';
         } else if (
