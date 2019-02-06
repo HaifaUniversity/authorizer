@@ -715,7 +715,7 @@ if ( ! class_exists( 'WP_Plugin_Authorizer' ) ) {
           $default_role = 'emeritus_staff';
         } else if (
           isset( $user_data['primary_code'] ) &&
-          '1' == $user_data['primary_code']
+          '2' == $user_data['primary_code']
         ) {
           $default_role = 'management_staff';
         } else {
