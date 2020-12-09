@@ -697,12 +697,12 @@ if ( ! class_exists( 'WP_Plugin_Authorizer' ) ) {
       function my_authorizer_custom_role( $default_role, $user_data ) {
         // Allow library guests to log in via LDAP, and grant them mapped role.
         // error_log( print_r( $user_data, true ) );
-        error_log( print_r( $user_data['primary_code'], true ) );
+        error_log( print_r( $user_data, true ) );
         if (
           isset( $user_data['primary_code'] ) &&
           '3' == $user_data['primary_code']
         ) {
-          $default_role = 'management_staff';
+          $default_role = 'administrative_students';
         } else if (
           isset( $user_data['primary_code'] ) &&
           '1' == $user_data['primary_code']
@@ -712,12 +712,19 @@ if ( ! class_exists( 'WP_Plugin_Authorizer' ) ) {
           isset( $user_data['primary_code'] ) &&
           '4' == $user_data['primary_code']
         ) {
-          $default_role = 'emeritus_staff';
+          $default_role = 'management_staff';
         } else if (
           isset( $user_data['primary_code'] ) &&
           '2' == $user_data['primary_code']
         ) {
           $default_role = 'management_staff';
+        } else if (
+          isset( $user_data['primary_code'] ) &&
+          '1' == $user_data['primary_code'] && 
+          isset( $user_data['primary_code'] ) &&
+          '2' == $user_data['primary_code']
+        ) {
+          $default_role = 'administrative_academic';
         } else {
           $default_role = 'student';
         }
@@ -1484,6 +1491,7 @@ if ( ! class_exists( 'WP_Plugin_Authorizer' ) ) {
       $last_name    = '';
       $email        = '';
       $primary_code = '';
+      $group_membership = '';
 
       // Construct LDAP connection parameters. ldap_connect() takes either a
       // hostname or a full LDAP URI as its first parameter (works with OpenLDAP
@@ -1542,6 +1550,9 @@ if ( ! class_exists( 'WP_Plugin_Authorizer' ) ) {
       if ( array_key_exists( 'ldap_attr_primary_code', $auth_settings ) && strlen( $auth_settings['ldap_attr_primary_code'] ) > 0 ) {
         array_push( $ldap_attributes_to_retrieve, $auth_settings['ldap_attr_primary_code'] );
       }
+      if ( array_key_exists( 'ldap_attr_group_membership', $auth_settings ) && strlen( $auth_settings['ldap_attr_group_membership'] ) > 0 ) {
+        array_push( $ldap_attributes_to_retrieve, $auth_settings['ldap_attr_group_membership'] );
+      }
       if ( array_key_exists( 'ldap_attr_email', $auth_settings ) && strlen( $auth_settings['ldap_attr_email'] ) > 0 && substr( $auth_settings['ldap_attr_email'], 0, 1 ) !== '@' ) {
         array_push( $ldap_attributes_to_retrieve, $this->lowercase( $auth_settings['ldap_attr_email'] ) );
       }
@@ -1599,6 +1610,12 @@ if ( ! class_exists( 'WP_Plugin_Authorizer' ) ) {
           $primary_code = $ldap_entries[ $i ][ $ldap_attr_primary_code ][0];
           error_log(print_r($primary_code));
         }
+        // Get user groupMembership
+        $ldap_attr_group_membership = array_key_exists( 'ldap_attr_group_membership', $auth_settings ) ? $this->lowercase( $auth_settings['ldap_attr_group_membership'] ) : '';
+        if ( strlen( $ldap_attr_group_membership ) > 0 && array_key_exists( $ldap_attr_group_membership, $ldap_entries[ $i ] ) && $ldap_entries[ $i ][ $ldap_attr_group_membership ]['count'] > 0 && strlen( $ldap_entries[ $i ][ $ldap_attr_group_membership ][0] ) > 0 ) {
+          $group_membership = $ldap_entries[ $i ][ $ldap_attr_group_membership ][0];
+          error_log(print_r($group_membership));
+        }
         // Get user email if it is specified in another field.
         $ldap_attr_email = array_key_exists( 'ldap_attr_email', $auth_settings ) ? $this->lowercase( $auth_settings['ldap_attr_email'] ) : '';
         if ( strlen( $ldap_attr_email ) > 0 ) {
@@ -1637,6 +1654,7 @@ if ( ! class_exists( 'WP_Plugin_Authorizer' ) ) {
         'first_name'       => $first_name,
         'last_name'        => $last_name,
         'primary_code'     => $primary_code,
+        'group_membership' => $group_membership,
         'authenticated_by' => 'ldap',
         'ldap_attributes'  => $ldap_entries
       );
@@ -2896,6 +2914,13 @@ function signInCallback( authResult ) { // jshint ignore:line
         'auth_settings_external'
       );
       add_settings_field(
+        'auth_settings_ldap_attr_group_membership',
+        __( 'LDAP attribute containing group membership', 'authorizer' ),
+        array( $this, 'print_text_ldap_attr_group_membership' ),
+        'authorizer',
+        'auth_settings_external'
+      );
+      add_settings_field(
         'auth_settings_ldap_attr_update_on_login',
         __( 'LDAP attribute update', 'authorizer' ),
         array( $this, 'print_checkbox_ldap_attr_update_on_login' ),
@@ -3162,6 +3187,9 @@ function signInCallback( authResult ) { // jshint ignore:line
       if ( ! array_key_exists( 'ldap_attr_primary_code', $auth_settings ) ) {
         $auth_settings['ldap_attr_primary_code'] = '';
       }
+      if ( ! array_key_exists( 'ldap_attr_group_membership', $auth_settings ) ) {
+        $auth_settings['ldap_attr_group_membership'] = '';
+      }
       if ( ! array_key_exists( 'ldap_attr_update_on_login', $auth_settings ) ) {
         $auth_settings['ldap_attr_update_on_login'] = '';
       }
@@ -3328,6 +3356,9 @@ function signInCallback( authResult ) { // jshint ignore:line
         }
         if ( ! array_key_exists( 'ldap_attr_primary_code', $auth_multisite_settings ) ) {
           $auth_multisite_settings['ldap_attr_primary_code'] = '';
+        }
+        if ( ! array_key_exists( 'ldap_attr_group_membership', $auth_multisite_settings ) ) {
+          $auth_multisite_settings['ldap_attr_group_membership'] = '';
         }
         if ( ! array_key_exists( 'ldap_attr_update_on_login', $auth_multisite_settings ) ) {
           $auth_multisite_settings['ldap_attr_update_on_login'] = '';
@@ -5180,6 +5211,24 @@ function signInCallback( authResult ) { // jshint ignore:line
       <?php
     }
 
+    /**
+     * Settings print callback.
+     *
+     * @param  string $args Args (e.g., multisite admin mode).
+     * @return void
+     */
+    public function print_text_ldap_attr_group_membership( $args = '' ) {
+      // Get plugin option.
+      $option               = 'ldap_attr_group_membership';
+      $auth_settings_option = $this->get_plugin_option( $option, $this->get_admin_mode( $args ), 'allow override', 'print overlay' );
+
+      // Print option elements.
+      ?>
+      <input type="text" id="auth_settings_<?php echo esc_attr( $option ); ?>" name="auth_settings[<?php echo esc_attr( $option ); ?>]" value="<?php echo esc_attr( $auth_settings_option ); ?>" placeholder="" />
+      <br /><label for="auth_settings_<?php echo esc_attr( $option ); ?>" class="helper"><?php esc_html_e( 'Example:  groupMembership', 'authorizer' ); ?></label>
+      <?php
+    }
+
 
     /**
      * Settings print callback.
@@ -5845,6 +5894,10 @@ function signInCallback( authResult ) { // jshint ignore:line
                 <td><?php $this->print_text_ldap_attr_primary_code( array( WP_Plugin_Authorizer::NETWORK_CONTEXT => true ) ); ?></td>
               </tr>
               <tr>
+                <th scope="row"><?php esc_html_e( 'LDAP attribute containing group membership', 'authorizer' ); ?></th>
+                <td><?php $this->print_text_ldap_attr_group_membership( array( WP_Plugin_Authorizer::NETWORK_CONTEXT => true ) ); ?></td>
+              </tr>
+              <tr>
                 <th scope="row"><?php esc_html_e( 'LDAP attribute update', 'authorizer' ); ?></th>
                 <td><?php $this->print_checkbox_ldap_attr_update_on_login( array( WP_Plugin_Authorizer::NETWORK_CONTEXT => true ) ); ?></td>
               </tr>
@@ -5953,6 +6006,7 @@ function signInCallback( authResult ) { // jshint ignore:line
         'ldap_attr_first_name',
         'ldap_attr_last_name',
         'ldap_attr_primary_code',
+        'ldap_attr_group_membership',
         'ldap_attr_update_on_login',
         'advanced_lockouts',
         'advanced_hide_wp_login',
@@ -6867,6 +6921,7 @@ function signInCallback( authResult ) { // jshint ignore:line
           $auth_settings['ldap_attr_first_name']      = $auth_multisite_settings['ldap_attr_first_name'];
           $auth_settings['ldap_attr_last_name']       = $auth_multisite_settings['ldap_attr_last_name'];
           $auth_settings['ldap_attr_primary_code']    = $auth_multisite_settings['ldap_attr_primary_code'];
+          $auth_settings['ldap_attr_group_membership']    = $auth_multisite_settings['ldap_attr_group_membership'];
           $auth_settings['ldap_attr_update_on_login'] = $auth_multisite_settings['ldap_attr_update_on_login'];
 
           // Override access_who_can_login and access_who_can_view.
