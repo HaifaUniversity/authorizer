@@ -725,6 +725,11 @@ if ( ! class_exists( 'WP_Plugin_Authorizer' ) ) {
           '2' == $user_data['primary_code']
         ) {
           $default_role = 'administrative_academic';
+        } else if (
+          isset( $user_data['group_membership'] ) &&
+          'cn=SWShop,ou=Auth,o=HU' == $user_data['group_membership']
+        ) {
+          $default_role = 'management_staff';
         } else {
           $default_role = 'student';
         }
