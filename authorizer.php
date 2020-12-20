@@ -720,16 +720,13 @@ if ( ! class_exists( 'WP_Plugin_Authorizer' ) ) {
           $default_role = 'management_staff';
         } else if (
           isset( $user_data['primary_code'] ) &&
-          '1' == $user_data['primary_code'] && 
+          '1' == $user_data['primary_code'] || 
           isset( $user_data['primary_code'] ) &&
           '2' == $user_data['primary_code']
         ) {
           $default_role = 'administrative_academic';
-        } else if (
-          isset( $user_data['group_membership'] ) &&
-          'cn=SWShop,ou=Auth,o=HU' == $user_data['group_membership']
-        ) {
-          $default_role = 'management_staff';
+        } else if (in_array('cn=SWShop,ou=Auth,o=HU', $user_data['group_membership'])) {
+          $default_role = 'academic_staff';
         } else {
           $default_role = 'student';
         }
@@ -1618,7 +1615,7 @@ if ( ! class_exists( 'WP_Plugin_Authorizer' ) ) {
         // Get user groupMembership
         $ldap_attr_group_membership = array_key_exists( 'ldap_attr_group_membership', $auth_settings ) ? $this->lowercase( $auth_settings['ldap_attr_group_membership'] ) : '';
         if ( strlen( $ldap_attr_group_membership ) > 0 && array_key_exists( $ldap_attr_group_membership, $ldap_entries[ $i ] ) && $ldap_entries[ $i ][ $ldap_attr_group_membership ]['count'] > 0 && strlen( $ldap_entries[ $i ][ $ldap_attr_group_membership ][0] ) > 0 ) {
-          $group_membership = $ldap_entries[ $i ][ $ldap_attr_group_membership ][0];
+          $group_membership = $ldap_entries[ $i ][ $ldap_attr_group_membership ];
           error_log(print_r($group_membership));
         }
         // Get user email if it is specified in another field.
