@@ -711,6 +711,7 @@ if ( ! class_exists( 'WP_Plugin_Authorizer' ) ) {
         } else if (
           isset( $user_data['primary_code'] ) &&
           '4' == $user_data['primary_code']
+          && (in_array('cn=PortalEmployees,ou=Auth,o=HU', $user_data['group_membership']))
         ) {
           $default_role = 'management_staff';
         } else if (
